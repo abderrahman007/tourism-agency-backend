@@ -1,30 +1,20 @@
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from dotenv import load_dotenv
+import resend
 import os
+from dotenv import load_dotenv
 from models.models import fullregistration
 
 load_dotenv()
-GMAIL_USER = os.getenv("GMAIL_USER")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+resend.api_key = os.getenv("RESEND_API_KEY")
 
 
 def _send(to_email: str, subject: str, html: str):
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = GMAIL_USER
-    msg["To"]      = to_email
-    msg.attach(MIMEText(html, "html"))
-
-    # Port 587 + STARTTLS works on Render free tier (port 465 is blocked)
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-        server.sendmail(GMAIL_USER, to_email, msg.as_string())
-        print(f"Email sent to {to_email}")
+    resend.Emails.send({
+        "from": "Travel Team <onboarding@resend.dev>",
+        "to": to_email,
+        "subject": subject,
+        "html": html,
+    })
+    print(f"Email sent to {to_email}")
 
 
 # ─────────────────────────────────────────────
