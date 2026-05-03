@@ -18,6 +18,10 @@ app.add_middleware(
     allow_credentials=True
 )
 
+@app.get("/")
+def ping():
+    return {"status": "ok"}
+
 
 app.include_router(approuter)
 
