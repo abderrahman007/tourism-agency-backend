@@ -69,7 +69,7 @@ async def get_last_trip():
             .select("*, hotel(*), outbound_flight(*), return_flight(*)")
             .gt("expired", today)          # filter first (optional but cleaner)
             .order("id", desc=True)        # latest trips
-            .limit(10)                    # get 10 trips
+            .limit(6)                    # get 6 trips
             .execute()
         )
 
