@@ -6,3 +6,4 @@ bcrypt
 PyJWT
 Pillow
 python-multipart
+resend
