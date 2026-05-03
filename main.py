@@ -18,7 +18,7 @@ app.add_middleware(
     allow_credentials=True
 )
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def ping():
     return {"status": "ok"}
 
