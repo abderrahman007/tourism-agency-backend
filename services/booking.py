@@ -71,8 +71,10 @@ async def register_and_reserve(data: fullregistration):
         supabase.table("trip").update({"places": trip["places"] - 1}).eq("id", data.trip_id).execute()
         trip_name = supabase.table("trip").select("name").eq("id", data.trip_id).execute().data[0]["name"]
 
-        # Email 1 — pending, transaction code shown for office reference
-        email_pending(data, trip_name, transaction_code)
+        try:
+            email_pending(data, trip_name, transaction_code)
+        except Exception as email_err:
+            print(f"⚠️ Pending email failed: {email_err}")
 
         return {
             "message": "Reservation created successfully",
@@ -127,12 +129,15 @@ async def reserve(data: Reservation):
 
         supabase.table("trip").update({"places": trip["places"] - 1}).eq("id", data.trip_id).execute()
 
-        # Email 1 — pending, transaction code shown for office reference
         customer_data = SimpleNamespace(
-            fullname = customer["fullname"],
-            email    = customer["email"],
+            fullname=customer["fullname"],
+            email=customer["email"],
         )
-        email_pending(customer_data, trip["name"], transaction_code)
+
+        try:
+            email_pending(customer_data, trip["name"], transaction_code)
+        except Exception as email_err:
+            print(f"⚠️ Pending email failed: {email_err}")
 
         return {
             "message": "Reservation created successfully",
@@ -176,28 +181,29 @@ async def cancel_reservation(transaction_code: str):
         if not resp.data:
             raise HTTPException(status_code=404, detail="Reservation not found")
 
-        res        = resp.data[0]
-        customer   = res.get("customer") or {}
-        trip       = res.get("trip")     or {}
+        res      = resp.data[0]
+        customer = res.get("customer") or {}
+        trip     = res.get("trip")     or {}
 
         supabase.table("reservation") \
             .delete() \
             .eq("transaction_code", transaction_code) \
             .execute()
 
-        # Restore place count
         trip_resp = supabase.table("trip").select("places").eq("id", res["trip_id"]).execute()
         if trip_resp.data:
             current_places = trip_resp.data[0]["places"]
             supabase.table("trip").update({"places": current_places + 1}).eq("id", res["trip_id"]).execute()
 
-        # Email 3 — cancelled
         if customer.get("email"):
-            email_cancelled(
-                fullname  = customer.get("fullname", "Customer"),
-                email     = customer["email"],
-                trip_name = trip.get("name", "your trip"),
-            )
+            try:
+                email_cancelled(
+                    fullname=customer.get("fullname", "Customer"),
+                    email=customer["email"],
+                    trip_name=trip.get("name", "your trip"),
+                )
+            except Exception as email_err:
+                print(f"⚠️ Cancel email failed: {email_err}")
 
         return {"message": "Reservation cancelled successfully"}
 
@@ -233,16 +239,19 @@ async def confirm_booking(transaction_code: str):
         customer = reservation["customer"]
         trip     = reservation["trip"]
 
-        # Email 2 — confirmed, transaction code revealed
         customer_data = SimpleNamespace(
-            fullname = customer["fullname"],
-            email    = customer["email"],
+            fullname=customer["fullname"],
+            email=customer["email"],
         )
-        email_confirmed(
-            data             = customer_data,
-            trip_name        = trip["name"],
-            transaction_code = transaction_code,
-        )
+
+        try:
+            email_confirmed(
+                data=customer_data,
+                trip_name=trip["name"],
+                transaction_code=transaction_code,
+            )
+        except Exception as email_err:
+            print(f"⚠️ Confirm email failed but booking is confirmed: {email_err}")
 
         return {
             "message": "Booking confirmed successfully",

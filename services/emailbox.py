@@ -9,13 +9,19 @@ load_dotenv()
 GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
+
 def _send(to_email: str, subject: str, html: str):
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = GMAIL_USER
     msg["To"]      = to_email
     msg.attach(MIMEText(html, "html"))
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+
+    # Port 587 + STARTTLS works on Render free tier (port 465 is blocked)
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
         server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         server.sendmail(GMAIL_USER, to_email, msg.as_string())
         print(f"Email sent to {to_email}")
@@ -23,7 +29,6 @@ def _send(to_email: str, subject: str, html: str):
 
 # ─────────────────────────────────────────────
 # 1. PENDING — sent right after registration
-#    No transaction code yet shown to customer
 # ─────────────────────────────────────────────
 def email_pending(data: fullregistration, trip_name: str, transaction_code: str):
     html = f"""
@@ -69,7 +74,6 @@ def email_pending(data: fullregistration, trip_name: str, transaction_code: str)
 
 # ─────────────────────────────────────────────
 # 2. CONFIRMED — sent when admin confirms
-#    Transaction code is revealed here
 # ─────────────────────────────────────────────
 def email_confirmed(data: fullregistration, trip_name: str, transaction_code: str):
     html = f"""

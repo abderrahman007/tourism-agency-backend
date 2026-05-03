@@ -1,15 +1,20 @@
 import random
 import io
 import uuid
+import time
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
-# In-memory store (swap with Redis in production)
-captcha_store: dict[str, str] = {}
+# In-memory store: token → (code, expiry_timestamp)
+captcha_store: dict[str, tuple[str, float]] = {}
+
+CAPTCHA_TTL = 300  # 5 minutes
+
 
 def generate_code(length=5) -> str:
     return "".join(random.choices(CHARS, k=length))
+
 
 def draw_captcha(code: str) -> bytes:
     W, H = 200, 70
@@ -42,14 +47,19 @@ def draw_captcha(code: str) -> bytes:
     img.save(buf, format="PNG")
     return buf.getvalue()
 
+
 def create_captcha() -> tuple[str, bytes]:
     token = str(uuid.uuid4())
     code = generate_code()
-    captcha_store[token] = code
+    captcha_store[token] = (code, time.time() + CAPTCHA_TTL)
     return token, draw_captcha(code)
 
+
 def verify_captcha(token: str, answer: str) -> bool:
-    correct = captcha_store.pop(token, None)
-    if not correct:
+    entry = captcha_store.pop(token, None)
+    if not entry:
         return False
-    return answer.strip().upper() == correct
+    code, expiry = entry
+    if time.time() > expiry:
+        return False
+    return answer.strip().upper() == code
